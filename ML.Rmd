@@ -7,7 +7,7 @@ output:
   pdf_document: default
 ---
 
-```{r setup, include=FALSE}
+```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
 library(caret)
 library(randomForest)
