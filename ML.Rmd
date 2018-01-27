@@ -1,0 +1,99 @@
+---
+title: "ML Project"
+author: "Kevin"
+date: "2018/1/14"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(randomForest)
+library(rpart)
+
+```
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement ??? a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+##Data
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+##What you should submit
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+##Getting and cleaning data
+```{r preprocess}
+myTraining <- read.csv(url("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
+validation <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+#number of class
+table(myTraining$classe)
+#clean up data and remove cols that mostly are NAs
+naIndex <- vector()
+for(i in 1:ncol(myTraining)){
+        if(sum(is.na(myTraining[,i]))/nrow(myTraining)>0.95||sum(myTraining[,i]=="")/nrow(myTraining)>0.95)
+                naIndex <- c(naIndex,i)
+}
+myTraining <- myTraining[,-naIndex]
+#remove unnecessary cols
+myTraining <- myTraining[,-c(1:7)]
+#check the dim of dataset
+dim(myTraining)
+```
+## Data partition 
+70% of training will be used as training, 30% for testing
+the testing data will be used as validation
+```{r partition}
+
+set.seed(9)
+train <- createDataPartition(y=myTraining$classe, p=0.7, list=FALSE)
+training <- myTraining[train, ]
+testing <- myTraining[-train, ]
+```
+## Princeple component analysis
+Given that we have 86 variables even after trimming, we want to find a new set of variables that are uncorrelated and explain as much variance as possible
+```{r pca}
+preProc <- preProcess(training[,-which(colnames(training)=="classe")],method="pca",thresh = 0.9)
+trainingPC <- predict(preProc,training)
+testingPC <- predict(preProc,testing)
+```
+## Random forest
+```{r rf}
+modFitRF <- randomForest(training$classe ~ .,   data=trainingPC)
+predictions1 <- predict(modFitRF, testingPC, type = "class")
+confusionMatrix(predictions1, testing$classe)
+```
+
+##Decision Tree
+```{r dt}
+modFitDT <- rpart(classe ~ ., data=training, method="class")
+predictions2 <- predict(modFitDT, testing, type = "class")
+confusionMatrix(predictions2, testing$classe)
+```
+
+Random forest has a better accurcy 
+
+##Validation
+```{r vd}
+#clean up data and remove cols that mostly are NAs
+naIndex <- vector()
+for(i in 1:ncol(validation)){
+        if(sum(is.na(validation[,i]))/nrow(validation)>0.95||sum(validation[,i]=="")/nrow(validation)>0.95)
+                naIndex <- c(naIndex,i)
+}
+validationCl <- validation[,-naIndex]
+#remove unnecessary cols
+validationCl <- validationCl[,-c(1:7)]
+testdataPC <- predict(preProc,validationCl[,1:52])
+validationCl$classe <- predict(modFitRF,testdataPC)
+```
