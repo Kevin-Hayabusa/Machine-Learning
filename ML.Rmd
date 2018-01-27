@@ -3,8 +3,7 @@ title: "ML Project"
 author: "Kevin"
 date: "2018/1/14"
 output:
-  html_document: default
-  pdf_document: default
+  rmarkdown::github_document
 ---
 
 ```{r setup}
